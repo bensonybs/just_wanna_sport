@@ -1,5 +1,5 @@
 const { default: axios } = require("axios");
-// const FormData = require('form-data')
+
 const Endpoint = {
   baseUrl: 'http://booking.tpsc.sporetrofit.com/',
   location: 'http://booking.tpsc.sporetrofit.com/Home/loadLocationBlock',
@@ -11,7 +11,16 @@ const Endpoint = {
     return endpoint
   },
 }
-
+const utility = {
+  formatHour(hour) {
+    //將小時的數字轉為兩位數，已利排版
+    hour = String(hour)
+    if (hour.length < 2) {
+      hour = '0' + hour
+    }
+    return `${hour}`
+  }
+}
 const model = {
   locationList: [], //API抓到的運動中心清單
   sportTypeList: [], //API抓到的運動類別清單
@@ -27,8 +36,8 @@ const model = {
   { LID: 'WSSC', lidName: '文山' },
   { LID: 'ZSSC', lidName: '中山' }], //使用者所選擇要查詢的運動中心
   choosedSport: { categoryId: 'Badminton', categoryName: '羽球' }, //使用者所選擇要查詢的運動類別
-  useDate: '2022-10-01', //使用者所選擇要查詢的日期
-  availableSlots: ['Call'],
+  useDate: '2022-10-05', //使用者所選擇要查詢的日期
+  availableSlots: [],
   async getLocations() {
     const endpoint = Endpoint.location
     return await axios.post(endpoint)
@@ -43,7 +52,7 @@ const controller = {
   // 取得運動中心及運動項目清單
   printStartMsg() {
     console.log(`正在尋找所有可預約的【${model.choosedSport.categoryName}】場地，預約日期:${model.useDate}`)
-    console.log('|運動中心|場地|時間|')
+    console.log('|中心|  時段   |位置|')
   },
   getBasicInformation() {
     Promise.all([model.getLocations(), model.getSportTypes()])
@@ -58,11 +67,13 @@ const controller = {
       })
   },
   printAvailableSlots() {
+    // 原本想要用model.availableSlots來存取得的資料，但asynchronous 搞不定，暫時先直接在console印出
+    // 此函數暫時沒用
     model.availableSlots.forEach(slot => {
       console.log(slot)
     })
   },
-  saveAvailableSlotsOfLocation(LID) {
+  checkAvailability(LID) {
     const endpoint = Endpoint.createBookingListEndpoint(LID, model.choosedSport.categoryId, model.useDate)
     const config = {
       "headers": {
@@ -73,7 +84,7 @@ const controller = {
         "Referer": endpoint,
         "Referrer-Policy": "strict-origin-when-cross-origin"
       },
-      "data": "_search=false&rows=200&page=1&sidx=&sord=asc", //設定回傳資料是否分頁
+      "data": "_search=false&rows=200&page=1&sidx=&sord=asc", //設定回傳資料是否要分頁
       "method": "POST"
     }
     axios(endpoint, config)
@@ -82,20 +93,24 @@ const controller = {
         response.data.rows.forEach(booking => {
           const isAvailable = booking.Status == '預約'
           if (isAvailable) {
-            const slot = `${booking.LIDName}|${booking.LSIDName}`
-            const time = `${booking.StartTime.Hours}_${booking.EndTime.Hours}`
-            model.availableSlots.push(`|${slot}|${time}|`)
+            const location = `${booking.LIDName}`
+            const slot = `${booking.LSIDName}`
+            const time = `${utility.formatHour(booking.StartTime.Hours)} - ${utility.formatHour(booking.EndTime.Hours)}`
+            // model.availableSlots.push(`|${slot}|${time}|`)
+            // 原本想要用model.availableSlots來存取得的資料，但asynchronous 搞不定，暫時先直接在console印出
+            console.log(`|${location}| ${time} |${slot}`)
           }
         })
       }).catch(error => {
         // handle error
         // console.log(error);
+        // Error Msg 目前先暫時忽略，之後要顯示
         return
       })
   },
-  saveAllAvailableSlots() {
+  checkLocations() {
       model.choosedLocations.forEach(location => {
-        controller.saveAvailableSlotsOfLocation(location.LID)
+        controller.checkAvailability(location.LID)
       })
   },
 }
@@ -103,8 +118,6 @@ const controller = {
 
 
 controller.printStartMsg()
-controller.saveAllAvailableSlots()
+controller.checkLocations()
 
-
-controller.printAvailableSlots()
 
