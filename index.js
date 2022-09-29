@@ -36,7 +36,7 @@ const model = {
   { LID: 'WSSC', lidName: '文山' },
   { LID: 'ZSSC', lidName: '中山' }], //使用者所選擇要查詢的運動中心
   choosedSport: { categoryId: 'Badminton', categoryName: '羽球' }, //使用者所選擇要查詢的運動類別
-  useDate: '2022-10-05', //使用者所選擇要查詢的日期
+  useDate: '2022-10-01', //使用者所選擇要查詢的日期
   availableSlots: [],
   async getLocations() {
     const endpoint = Endpoint.location
@@ -73,8 +73,8 @@ const controller = {
       console.log(slot)
     })
   },
-  checkAvailability(LID) {
-    const endpoint = Endpoint.createBookingListEndpoint(LID, model.choosedSport.categoryId, model.useDate)
+  checkAvailability(location) {
+    const endpoint = Endpoint.createBookingListEndpoint(location.LID, model.choosedSport.categoryId, model.useDate)
     const config = {
       "headers": {
         "accept": "application/json, text/javascript, */*; q=0.01",
@@ -90,28 +90,35 @@ const controller = {
     axios(endpoint, config)
       .then(response => {
         // handle success
-        response.data.rows.forEach(booking => {
-          const isAvailable = booking.Status == '預約'
-          if (isAvailable) {
-            const location = `${booking.LIDName}`
-            const slot = `${booking.LSIDName}`
-            const time = `${utility.formatHour(booking.StartTime.Hours)} - ${utility.formatHour(booking.EndTime.Hours)}`
-            // model.availableSlots.push(`|${slot}|${time}|`)
-            // 原本想要用model.availableSlots來存取得的資料，但asynchronous 搞不定，暫時先直接在console印出
-            console.log(`|${location}| ${time} |${slot}`)
-          }
-        })
+        if (response.data.hasOwnProperty('rows')) {
+          response.data.rows.forEach(booking => {
+            const isAvailable = booking.Status == '預約'
+            if (isAvailable) {
+              const location = `${booking.LIDName}`
+              const slot = `${booking.LSIDName}`
+              const time = `${utility.formatHour(booking.StartTime.Hours)} - ${utility.formatHour(booking.EndTime.Hours)}`
+              // model.availableSlots.push(`|${slot}|${time}|`)
+              // 原本想要用model.availableSlots來存取得的資料，但asynchronous 搞不定，暫時先直接在console印出
+              console.log(`|${location}| ${time} |${slot}`)
+            }
+          })
+        } else {
+          console.log(`|${location.lidName}|運動中心已滿，或尚未開放預約`)
+        }
+
       }).catch(error => {
         // handle error
         // console.log(error);
-        // Error Msg 目前先暫時忽略，之後要顯示
+        console.log(`|${location.lidName}|運動中心資料異常，請重試`)
         return
       })
   },
   checkLocations() {
-      model.choosedLocations.forEach(location => {
-        controller.checkAvailability(location.LID)
-      })
+    let timeOut = 500
+    model.choosedLocations.forEach(location => {
+      setTimeout(() => { controller.checkAvailability(location) }, timeOut)
+      timeOut += 500
+    })
   },
 }
 
