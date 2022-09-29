@@ -1,65 +1,110 @@
 const { default: axios } = require("axios");
 // const FormData = require('form-data')
 const Endpoint = {
-  'location': 'http://booking.tpsc.sporetrofit.com/Home/loadLocationBlock',
-  'sportType': 'http://booking.tpsc.sporetrofit.com/Home/loadSportBlock',
-  getLocation() {
-    return axios.post(this.location)
-  },
-  getSportType() {
-    return axios.post(this.sportType)
+  baseUrl: 'http://booking.tpsc.sporetrofit.com/',
+  location: 'http://booking.tpsc.sporetrofit.com/Home/loadLocationBlock',
+  sportType: 'http://booking.tpsc.sporetrofit.com/Home/loadSportBlock',
+  createBookingListEndpoint(LID, categoryId, useDate) {
+    const url = "http://booking.tpsc.sporetrofit.com/Location/findAllowBookingList"
+    const queryParameters = `?LID=${LID}&categoryId=${categoryId}&useDate=${useDate}`
+    const endpoint = url + queryParameters
+    return endpoint
   },
 }
 
-// 取得運動中心及運動項目，此段可成功，暫時先註解掉
-// Promise.all([Endpoint.getLocation(), Endpoint.getSportType()])
-//   .then((response) => {
-//     const location = response[0].data.locations;
-//     const sportType = response[1].data.categories;
-//     console.log(location);
-//     console.log(sportType);
-//   }).catch(error => {
-//   // handle error
-//   console.log(error);
-// })
-
-// 以下有問題
-// 取得運動場館預訂清單
-// 伺服器會回傳以下，缺少PageNumber的參數，但不知道要怎麼設定
-// ====================================
-// {
-//   errorMsg: 'PageNumber cannot be below 1.\r\n參數名稱: pageNumber\r\n實際的值為 0。',
-//   consoleMsg: 'PageNumber cannot be below 1.\r\n參數名稱: pageNumber\r\n實際的值為 0。',
-//   refreshTime: '2022/9/25 下午 02:26:04'
-// }
-// ====================================
-
-const bookingListEndpoint = "http://booking.tpsc.sporetrofit.com/Location/findAllowBookingList?LID=DTSC&categoryId=Badminton&useDate=2022-10-01"
-const config = {
-  "headers": {
-    "accept": "application/json, text/javascript, */*; q=0.01",
-    "accept-language": "zh-TW,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
-    "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
-    "x-requested-with": "XMLHttpRequest",
-    "Referer": "http://booking.tpsc.sporetrofit.com/Location/BookingList?LID=DTSC&CategoryId=Badminton&UseDate=2022-10-01",
-    "Referrer-Policy": "strict-origin-when-cross-origin"
+const model = {
+  locationList: [], //API抓到的運動中心清單
+  sportTypeList: [], //API抓到的運動類別清單
+  choosedLocations: [{ LID: 'BTSC', lidName: '北投' },
+  { LID: 'DASC', lidName: '大安' },
+  { LID: 'DTSC', lidName: '大同' },
+  { LID: 'JJSC', lidName: '中正' },
+  { LID: 'NGSC', lidName: '南港' },
+  { LID: 'NHSC', lidName: '內湖' },
+  { LID: 'SLSC', lidName: '士林' },
+  { LID: 'SSSC', lidName: '松山' },
+  { LID: 'WHSC', lidName: '萬華' },
+  { LID: 'WSSC', lidName: '文山' },
+  { LID: 'ZSSC', lidName: '中山' }], //使用者所選擇要查詢的運動中心
+  choosedSport: { categoryId: 'Badminton', categoryName: '羽球' }, //使用者所選擇要查詢的運動類別
+  useDate: '2022-10-01', //使用者所選擇要查詢的日期
+  availableSlots: ['Call'],
+  async getLocations() {
+    const endpoint = Endpoint.location
+    return await axios.post(endpoint)
   },
-  "data": "_search=false&rows=100&page=1&sidx=&sord=asc",
-  "method": "POST"
+  async getSportTypes() {
+    const endpoint = Endpoint.sportType
+    return await axios.post(endpoint)
+  },
 }
-axios(bookingListEndpoint, config)
-.then(response => {
-  // handle success
-  response.data.rows.forEach(booking => {
-    const slot = `${booking.LIDName}|${booking.LSIDName}`
-    const time = `${booking.StartTime.Hours}-${booking.EndTime.Hours}`
-    const status = booking.Status
-    const isAvailable = status == '預約'
-    if (isAvailable) {
-      console.log(`${slot}|${time}|${status}`)
+
+const controller = {
+  // 取得運動中心及運動項目清單
+  printStartMsg() {
+    console.log(`正在尋找所有可預約的【${model.choosedSport.categoryName}】場地，預約日期:${model.useDate}`)
+    console.log('|運動中心|場地|時間|')
+  },
+  getBasicInformation() {
+    Promise.all([model.getLocations(), model.getSportTypes()])
+      .then((response) => {
+        const location = response[0].data.locations;
+        const sportType = response[1].data.categories;
+        console.log(location);
+        console.log(sportType);
+      }).catch(error => {
+        // handle error
+        console.log(error);
+      })
+  },
+  printAvailableSlots() {
+    model.availableSlots.forEach(slot => {
+      console.log(slot)
+    })
+  },
+  saveAvailableSlotsOfLocation(LID) {
+    const endpoint = Endpoint.createBookingListEndpoint(LID, model.choosedSport.categoryId, model.useDate)
+    const config = {
+      "headers": {
+        "accept": "application/json, text/javascript, */*; q=0.01",
+        "accept-language": "zh-TW,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6",
+        "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        "x-requested-with": "XMLHttpRequest",
+        "Referer": endpoint,
+        "Referrer-Policy": "strict-origin-when-cross-origin"
+      },
+      "data": "_search=false&rows=200&page=1&sidx=&sord=asc", //設定回傳資料是否分頁
+      "method": "POST"
     }
-  })
-}).catch(error => {
-  // handle error
-  console.log(error);
-})
+    axios(endpoint, config)
+      .then(response => {
+        // handle success
+        response.data.rows.forEach(booking => {
+          const isAvailable = booking.Status == '預約'
+          if (isAvailable) {
+            const slot = `${booking.LIDName}|${booking.LSIDName}`
+            const time = `${booking.StartTime.Hours}_${booking.EndTime.Hours}`
+            model.availableSlots.push(`|${slot}|${time}|`)
+          }
+        })
+      }).catch(error => {
+        // handle error
+        // console.log(error);
+        return
+      })
+  },
+  saveAllAvailableSlots() {
+      model.choosedLocations.forEach(location => {
+        controller.saveAvailableSlotsOfLocation(location.LID)
+      })
+  },
+}
+
+
+
+controller.printStartMsg()
+controller.saveAllAvailableSlots()
+
+
+controller.printAvailableSlots()
+
