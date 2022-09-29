@@ -44,7 +44,7 @@ const config = {
     "Referer": "http://booking.tpsc.sporetrofit.com/Location/BookingList?LID=DTSC&CategoryId=Badminton&UseDate=2022-10-01",
     "Referrer-Policy": "strict-origin-when-cross-origin"
   },
-  "body": "_search=false&rows=100&page=1&sidx=&sord=asc",
+  "data": "_search=false&rows=100&page=1&sidx=&sord=asc",
   "method": "POST"
 }
 axios(bookingListEndpoint, config)
