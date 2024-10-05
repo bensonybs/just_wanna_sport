@@ -36,7 +36,7 @@ const model = {
   { LID: 'WSSC', lidName: '文山' },
   { LID: 'ZSSC', lidName: '中山' }], //使用者所選擇要查詢的運動中心
   choosedSport: { categoryId: 'Badminton', categoryName: '羽球' }, //使用者所選擇要查詢的運動類別
-  useDate: '2022-10-01', //使用者所選擇要查詢的日期
+  useDate: '2024-10-10', //使用者所選擇要查詢的日期
   availableSlots: [],
   async getLocations() {
     const endpoint = Endpoint.location
